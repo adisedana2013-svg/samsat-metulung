@@ -1,0 +1,6 @@
+{
+  "name": "Samsat Metulung Desa - Kabupaten Bangli",
+  "description": "Aplikasi pencatatan dan rekapitulasi harian & bulanan realisasi penerimaan Samsat Metulung Desa Kabupaten Bangli.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
