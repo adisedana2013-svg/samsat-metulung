@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SamsatDailyEntry, VehicleTransaction } from '../types';
 import { formatRupiah } from '../utils/formatters';
-import { X, Save, Building2, Calendar, User, FileText, Calculator, Car, Plus, Trash2, CheckCircle2 } from 'lucide-react';
+import { compressActivityPhoto } from '../utils/imageUtils';
+import { X, Save, Building2, Calendar, User, FileText, Calculator, Car, Plus, Trash2, CheckCircle2, Camera, Upload, Loader2, AlertCircle } from 'lucide-react';
 
 interface InputVehicleItem {
   id: string;
@@ -57,8 +58,18 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
   const [petugas, setPetugas] = useState('I Wayan Sudiarta, S.H.');
   const [catatan, setCatatan] = useState('');
+  const [fotoKegiatan, setFotoKegiatan] = useState<string[]>([]);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isDraggingPhoto, setIsDraggingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const MAX_PHOTOS = 6;
 
   useEffect(() => {
+    setPhotoError(null);
+    setFormError(null);
     if (initialData) {
       setTanggal(initialData.tanggal);
       if (listKantorDesa.includes(initialData.kantorDesa)) {
@@ -74,6 +85,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setRealisasiLuarRp(initialData.realisasiLuarRp);
       setPetugas(initialData.petugas || '');
       setCatatan(initialData.catatan || '');
+      setFotoKegiatan(initialData.fotoKegiatan || []);
       setBangliVehicles([]);
       setLuarVehicles([]);
     } else {
@@ -88,15 +100,57 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setRealisasiLuarNopol('');
       setRealisasiLuarRp('');
       setCatatan('');
+      setFotoKegiatan([]);
       setBangliVehicles([]);
       setLuarVehicles([]);
     }
   }, [initialData, isOpen, listKantorDesa]);
 
+  const handleProcessPhotoFiles = async (files: FileList | File[]) => {
+    const fileList = Array.from(files);
+    if (fileList.length === 0) return;
+
+    setPhotoError(null);
+    const remainingSlots = MAX_PHOTOS - fotoKegiatan.length;
+
+    if (remainingSlots <= 0) {
+      setPhotoError(`Maksimal ${MAX_PHOTOS} foto kegiatan per entri.`);
+      return;
+    }
+
+    const filesToProcess = fileList.slice(0, remainingSlots);
+    if (fileList.length > remainingSlots) {
+      setPhotoError(`Hanya ${remainingSlots} foto tambahan yang diproses (maks. ${MAX_PHOTOS} foto).`);
+    }
+
+    setIsUploadingPhoto(true);
+    try {
+      const compressedList: string[] = [];
+      for (const file of filesToProcess) {
+        const compressed = await compressActivityPhoto(file);
+        compressedList.push(compressed);
+      }
+      setFotoKegiatan((prev) => [...prev, ...compressedList]);
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : 'Gagal memproses foto kegiatan.');
+    } finally {
+      setIsUploadingPhoto(false);
+      if (photoInputRef.current) {
+        photoInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemovePhoto = (indexToRemove: number) => {
+    setFotoKegiatan((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+    setPhotoError(null);
+  };
+
   // Handle adding Bangli vehicle item
   const handleAddBangliVehicle = () => {
+    setFormError(null);
     if (!tempBangliPlat.trim() || tempBangliPlat.trim() === 'DK') {
-      alert('Mohon isi Plat Nomor Bangli yang valid!');
+      setFormError('Mohon isi Plat Nomor Bangli yang valid.');
       return;
     }
     const nominal = Number(tempBangliRp) || 0;
@@ -131,8 +185,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
   // Handle adding Luar Bangli vehicle item
   const handleAddLuarVehicle = () => {
+    setFormError(null);
     if (!tempLuarPlat.trim() || tempLuarPlat.trim() === 'DK') {
-      alert('Mohon isi Plat Nomor Luar Bangli yang valid!');
+      setFormError('Mohon isi Plat Nomor Luar Bangli yang valid.');
       return;
     }
     const nominal = Number(tempLuarRp) || 0;
@@ -178,9 +233,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
     const finalDesa = isCustomDesa ? customDesa : kantorDesa;
     if (!finalDesa.trim()) {
-      alert('Mohon isi nama Kantor Desa!');
+      setFormError('Mohon isi nama Kantor Desa.');
       return;
     }
 
@@ -227,7 +283,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         realisasiLuarNopol: luarUnitVal,
         realisasiLuarRp: luarRpVal,
         petugas,
-        catatan
+        catatan,
+        fotoKegiatan
       },
       generatedVehicles
     );
@@ -636,6 +693,121 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </div>
           </div>
 
+          {/* Section: Foto Kegiatan */}
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Camera className="w-4 h-4 text-amber-600" />
+                <span className="text-xs font-bold text-slate-800">
+                  Foto Kegiatan (Dokumentasi)
+                </span>
+              </div>
+              <span className="text-[11px] font-medium text-slate-500 tabular-nums">
+                {fotoKegiatan.length} / {MAX_PHOTOS} Foto
+              </span>
+            </div>
+
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => {
+                if (e.target.files) {
+                  handleProcessPhotoFiles(e.target.files);
+                }
+              }}
+              className="hidden"
+            />
+
+            {fotoKegiatan.length < MAX_PHOTOS && (
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDraggingPhoto(true);
+                }}
+                onDragLeave={() => setIsDraggingPhoto(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDraggingPhoto(false);
+                  if (e.dataTransfer.files) {
+                    handleProcessPhotoFiles(e.dataTransfer.files);
+                  }
+                }}
+                onClick={() => !isUploadingPhoto && photoInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-4 text-center transition-colors cursor-pointer ${
+                  isDraggingPhoto
+                    ? 'border-amber-500 bg-amber-50'
+                    : 'border-slate-300 bg-white hover:border-amber-400 hover:bg-amber-50/40'
+                }`}
+              >
+                {isUploadingPhoto ? (
+                  <div className="flex flex-col items-center justify-center gap-1.5 py-1 text-amber-700">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span className="text-xs font-semibold">Memproses &amp; mengompresi foto...</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-1 py-1">
+                    <div className="w-9 h-9 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center mb-0.5">
+                      <Upload className="w-4 h-4" />
+                    </div>
+                    <p className="text-xs font-semibold text-slate-700">
+                      Klik untuk pilih foto atau seret gambar ke sini
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      Format JPG, PNG, WebP &middot; Maks. {MAX_PHOTOS} foto kegiatan
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {photoError && (
+              <div className="flex items-center gap-2 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{photoError}</span>
+              </div>
+            )}
+
+            {fotoKegiatan.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
+                {fotoKegiatan.map((photoUrl, idx) => (
+                  <div
+                    key={idx}
+                    className="relative group rounded-lg overflow-hidden border border-slate-300 bg-slate-900 aspect-video"
+                  >
+                    <img
+                      src={photoUrl}
+                      alt={`Preview Foto Kegiatan ${idx + 1}`}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent px-2 py-1 flex items-center justify-between">
+                      <span className="text-[10px] font-semibold text-white">
+                        Foto {idx + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePhoto(idx)}
+                        className="p-1 rounded bg-rose-600 hover:bg-rose-700 text-white transition-colors cursor-pointer"
+                        title={`Hapus Foto ${idx + 1}`}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {formError && (
+            <div className="flex items-center gap-2 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{formError}</span>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
             <button
@@ -647,7 +819,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </button>
             <button
               type="submit"
-              className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 transition-colors shadow-sm cursor-pointer"
+              disabled={isUploadingPhoto}
+              className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 transition-colors shadow-sm cursor-pointer"
             >
               <Save className="w-4 h-4" />
               <span>Simpan Data</span>

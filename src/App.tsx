@@ -13,6 +13,7 @@ import { MonthlyRecap } from './components/MonthlyRecap';
 import { AnalyticsCharts } from './components/AnalyticsCharts';
 import { VehicleDetailTable } from './components/VehicleDetailTable';
 import { TransactionModal } from './components/TransactionModal';
+import { PhotoViewerModal } from './components/PhotoViewerModal';
 import { PrintReportModal } from './components/PrintReportModal';
 import { LoginPage } from './components/LoginPage';
 import { ConfirmModal } from './components/ConfirmModal';
@@ -108,6 +109,7 @@ export default function App() {
   // Modals
   const [isInputModalOpen, setIsInputModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<SamsatDailyEntry | null>(null);
+  const [viewingPhotosEntry, setViewingPhotosEntry] = useState<SamsatDailyEntry | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   // Sync entries to localStorage
@@ -116,6 +118,16 @@ export default function App() {
       localStorage.setItem(STORAGE_KEY_ENTRIES, JSON.stringify(entries));
     } catch (e) {
       console.error('Failed to save entries to localStorage', e);
+      setConfirmModalState({
+        isOpen: true,
+        title: 'Kapasitas Penyimpanan Browser Penuh',
+        message: 'Penyimpanan lokal browser penuh karena ukuran data atau foto kegiatan terlalu besar. Silakan gunakan tombol Backup JSON lalu hapus beberapa foto atau data lama.',
+        confirmText: 'Mengerti',
+        cancelText: 'Tutup',
+        variant: 'warning',
+        iconType: 'info',
+        onConfirm: () => {},
+      });
     }
   }, [entries]);
 
@@ -254,7 +266,8 @@ export default function App() {
         realisasiLuarNopol: data.realisasiLuarNopol || 0,
         realisasiLuarRp: data.realisasiLuarRp || 0,
         petugas: data.petugas || 'Petugas Samsat',
-        catatan: data.catatan || ''
+        catatan: data.catatan || '',
+        fotoKegiatan: data.fotoKegiatan || []
       };
       setEntries((prev) => [newEntry, ...prev]);
     }
@@ -444,6 +457,7 @@ export default function App() {
               setIsInputModalOpen(true);
             }}
             onDeleteEntry={handleDeleteEntry}
+            onViewPhotos={(entry) => setViewingPhotosEntry(entry)}
             onAddNewClick={() => {
               setEditingEntry(null);
               setIsInputModalOpen(true);
@@ -512,6 +526,16 @@ export default function App() {
         onSave={handleSaveEntry}
         initialData={editingEntry}
         listKantorDesa={LIST_KANTOR_DESA}
+      />
+
+      <PhotoViewerModal
+        entry={viewingPhotosEntry}
+        onClose={() => setViewingPhotosEntry(null)}
+        onEditEntry={(entry) => {
+          setViewingPhotosEntry(null);
+          setEditingEntry(entry);
+          setIsInputModalOpen(true);
+        }}
       />
 
       <PrintReportModal

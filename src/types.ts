@@ -9,6 +9,7 @@ export interface SamsatDailyEntry {
   realisasiLuarRp: number; // Amount in Rp
   catatan?: string;
   petugas?: string;
+  fotoKegiatan?: string[]; // Base64 compressed image data URLs
 }
 
 export interface VehicleTransaction {

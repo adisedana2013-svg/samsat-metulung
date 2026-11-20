@@ -11,13 +11,15 @@ import {
   Building2, 
   Plus, 
   FileText,
-  ChevronDown
+  ChevronDown,
+  Camera
 } from 'lucide-react';
 
 interface DailyTableProps {
   entries: SamsatDailyEntry[];
   onEditEntry: (entry: SamsatDailyEntry) => void;
   onDeleteEntry: (id: string) => void;
+  onViewPhotos: (entry: SamsatDailyEntry) => void;
   onAddNewClick: () => void;
   selectedMonth: string;
   setSelectedMonth: (month: string) => void;
@@ -28,6 +30,7 @@ export const DailyTable: React.FC<DailyTableProps> = ({
   entries,
   onEditEntry,
   onDeleteEntry,
+  onViewPhotos,
   onAddNewClick,
   selectedMonth,
   setSelectedMonth,
@@ -271,7 +274,7 @@ export const DailyTable: React.FC<DailyTableProps> = ({
               <th colSpan={2} className="px-3 py-2 border-r border-slate-800 bg-emerald-950 text-emerald-200">
                 TOTAL
               </th>
-              <th rowSpan={2} className="px-3 py-3 w-20 min-w-[80px]">
+              <th rowSpan={2} className="px-3 py-3 w-28 min-w-[110px]">
                 AKSI
               </th>
             </tr>
@@ -395,22 +398,50 @@ export const DailyTable: React.FC<DailyTableProps> = ({
 
                     {/* AKSI */}
                     <td className="px-2 py-2.5 text-center whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => onEditEntry(entry)}
-                          className="p-1 rounded-md text-amber-700 hover:text-amber-900 hover:bg-amber-100 transition-colors cursor-pointer"
-                          title="Edit Data"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => onDeleteEntry(entry.id)}
-                          className="p-1 rounded-md text-rose-600 hover:text-rose-800 hover:bg-rose-100 transition-colors cursor-pointer"
-                          title="Hapus Data"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                      {(() => {
+                        const photoCount = entry.fotoKegiatan?.length || 0;
+                        return (
+                          <div className="flex items-center justify-center gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={() => onViewPhotos(entry)}
+                              className={`inline-flex items-center gap-1 px-1.5 py-1 rounded-md transition-colors cursor-pointer ${
+                                photoCount > 0
+                                  ? 'text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 font-bold'
+                                  : 'text-slate-400 hover:text-sky-700 hover:bg-slate-100'
+                              }`}
+                              title={
+                                photoCount > 0
+                                  ? `Lihat Foto Kegiatan (${photoCount} foto)`
+                                  : 'Belum ada foto kegiatan (Klik untuk lihat / tambah)'
+                              }
+                            >
+                              <Camera className="w-3.5 h-3.5" />
+                              {photoCount > 0 && (
+                                <span className="text-[10px] tabular-nums leading-none">
+                                  {photoCount}
+                                </span>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onEditEntry(entry)}
+                              className="p-1 rounded-md text-amber-700 hover:text-amber-900 hover:bg-amber-100 transition-colors cursor-pointer"
+                              title="Edit Data"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onDeleteEntry(entry.id)}
+                              className="p-1 rounded-md text-rose-600 hover:text-rose-800 hover:bg-rose-100 transition-colors cursor-pointer"
+                              title="Hapus Data"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })()}
                     </td>
                   </tr>
                 );
