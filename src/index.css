@@ -33,7 +33,15 @@
     display: table-header-group;
   }
 
-  tr {
+  tr,
+  .print-avoid-break {
+    break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  img {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    max-width: 100%;
   }
 }
